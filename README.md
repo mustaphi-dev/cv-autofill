@@ -7,6 +7,7 @@ Browser extension that fills the CV sections of job application forms from your 
 - Node 24 LTS or newer
 - pnpm 12 (`npm i -g pnpm@12`)
 - uv (Python 3.14 is installed by uv on first run)
+- gitleaks (`brew install gitleaks`). The git hooks need it: `pnpm install` sets `core.hooksPath` to `.githooks`, which blocks commits containing secrets or without a [conventional commit](https://www.conventionalcommits.org) message. CI runs the same checks.
 
 ## Setup
 

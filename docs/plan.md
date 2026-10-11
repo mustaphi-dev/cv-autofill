@@ -77,7 +77,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 
 ## M1. Monorepo, tooling, CI skeleton
 
-**Features:** pnpm workspace and `uv` backend project; TypeScript strict, ESLint, Prettier, Ruff, mypy strict; GitHub Actions running lint, type-check and unit tests; pre-commit secret scanning; conventional commits and changelog tooling; compat-data check.
+**Features:** pnpm workspace and `uv` backend project; TypeScript strict, ESLint, Prettier, Ruff, mypy strict; GitHub Actions running lint, type-check and unit tests; pre-commit secret scanning; conventional commits (changelog tooling deferred to the first release, decided 2026-10-11); compat-data check.
 
 **ADRs:** build tool (WXT evaluated first, MV3 forced for every target); schema library (Zod expected).
 
@@ -230,3 +230,4 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - Manual smoke checklist completed on live Greenhouse and Lever forms in Chrome and Edge (plus Brave, subject to Q3).
 - Privacy policy published. Chrome Web Store listing drafted with the permission justification (Q2).
 - README covers setup, loading the extension, running each test suite and running the backend.
+- Changelog generated from the conventional commit history, and release tooling chosen (deferred from M1).
