@@ -1,5 +1,10 @@
 import * as z from "zod";
 
+// Zod can speed up validation by generating code with `new Function`, which
+// extension pages forbid (their CSP has no unsafe-eval). Probing for it logs a
+// CSP error, so turn it off everywhere. Profiles are small; speed is not lost.
+z.config({ jitless: true });
+
 // The profile (spec section 5). Every section is its own strict type, so an
 // entry from one section can never validate as another (unknown keys are
 // rejected). A list's array position is its order. Fields are optional so a
@@ -295,3 +300,18 @@ export const Profile = z
     { error: "Two entries share the same id" },
   );
 export type Profile = z.infer<typeof Profile>;
+
+// Messages from extension pages to the background (spec section 5). The
+// background validates every message and only accepts them from extension
+// pages, never from content scripts on job sites.
+export const Request = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("profile.get") }),
+  z.strictObject({ type: z.literal("profile.save"), profile: Profile }),
+  z.strictObject({ type: z.literal("data.deleteAll") }),
+]);
+export type Request = z.infer<typeof Request>;
+
+export type ReplyError =
+  "forbidden" | "invalid_request" | "stored_profile_invalid" | "storage_failed";
+export type Reply =
+  { ok: true; data: unknown } | { ok: false; error: ReplyError };
