@@ -204,9 +204,9 @@ Treat these as a starting point. Verify against current docs and live pages befo
 File transfer: content scripts run on the page's origin, so they cannot open the extension's IndexedDB. The background reads the CV file and sends it to the content script in chunks (base64, fixed chunk size, with a total size limit and a checksum), since messages must be JSON-safe.
 
 ### Profile schema
-Base it on the JSON Resume schema, extended:
+Base its section layout on the JSON Resume schema, but not its exact format: dates are structured and field names are our own, so JSON Resume files are not imported (decided 2026-10-11). Extended:
 - Separate arrays for every Scope section: `work`, `projects`, `education`, `publications`, `certifications`, `skills`, `languages`, `awards`, `volunteering`, `courses`, `memberships`, `talks`, `patents`, `references`. Projects never go into work fields. Publications never go into projects.
-- Each entry has a stable `id` and an explicit `order` I control.
+- Each entry has a stable `id`. Its position in its section's array is its order, which I control (decided 2026-10-11: no separate `order` field, so two entries can never claim the same place).
 - Dates stored as `{year, month}` with `month` optional, plus `current: boolean`. Never formatted strings.
 - Descriptions stored as structured bullets (array of strings) plus optional variants (short, long). The engine renders them per target: newline-separated `•` lines for plain textareas, real list markup for rich text editors.
 - Optional aliases per entry (school name variants, company former names) to help dropdown matching.
