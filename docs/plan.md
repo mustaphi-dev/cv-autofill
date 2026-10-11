@@ -40,7 +40,7 @@ Items I could not settle from the spec, found contradictory, or could not verify
 
 **Facts checked**
 
-- Chrome exposes the `browser` namespace from Chrome 148, and `webextension-polyfill` becomes a no-op there ([Chrome docs](https://developer.chrome.com/docs/extensions/develop/concepts/browser-namespace)). With a minimum of Chromium 116, the polyfill or an equivalent wrapper is still needed. This is consistent with the spec.
+- Chrome exposes the `browser` namespace from Chrome 148, and `webextension-polyfill` becomes a no-op there ([Chrome docs](https://developer.chrome.com/docs/extensions/develop/concepts/browser-namespace)). Decided 2026-10-11 in F2: the Chromium minimum is raised to 148, so no polyfill is used (ADR 0001, spec section 3 updated).
 - The minimum versions table in spec section 3 will be checked against current MDN compat data in M1, as the spec asks.
 
 ## LLM budget proposal

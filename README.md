@@ -34,4 +34,12 @@ uv run mypy
 uv run pytest
 ```
 
-Loading the extension and running the backend are documented here as those parts are built.
+## Load the extension in Chrome (or another Chromium browser, version 148+)
+
+```sh
+pnpm --filter @cv-autofill/extension build
+```
+
+Open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and choose `packages/extension/build/chrome-mv3`.
+
+Running the backend is documented here once it exists (M3).

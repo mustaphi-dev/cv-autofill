@@ -82,7 +82,7 @@ Support is added incrementally, easiest first:
 
 The architecture must not block Firefox or Safari, but do no Firefox or Safari work until I approve that release.
 
-Use Manifest V3 for every browser. Use the `browser.*` namespace everywhere. Chrome only exposes `browser.*` from version 148, which is above our minimum, so Mozilla's `webextension-polyfill` or the build tool's equivalent wrapper is mandatory.
+Use Manifest V3 for every browser. Use the `browser.*` namespace everywhere. Chrome exposes `browser.*` from version 148, and from 148 `runtime.onMessage` listeners can return a Promise. Our Chromium minimum is 148 (decided 2026-10-11, ADR 0001), so no polyfill or wrapper is used: every target supports `browser.*` natively.
 
 ### Validated compatibility facts (October 2026, from MDN browser-compat-data and vendor docs)
 
@@ -104,7 +104,7 @@ Use Manifest V3 for every browser. Use the `browser.*` namespace everywhere. Chr
 | Content script lifetime | Re-injected on navigation | Stays injected, but `window` properties are destroyed | Varies | Do not keep state on `window`. Re-initialise cleanly on every page lifecycle event. |
 | Packaging | ZIP / CRX | XPI, signed by Mozilla | Must be wrapped in a macOS app with `xcrun safari-web-extension-packager` (formerly `safari-web-extension-converter`), needs Xcode | Add a Safari build script. Note it needs a Mac. |
 
-Minimum versions: Chromium 116, Firefox 128 (current ESR line or newer), Safari 18.4. Confirm these against the latest compat data when you start, and tell me if anything has moved.
+Minimum versions: Chromium 148 (for the native `browser.*` namespace, see above), Firefox 128 (current ESR line or newer), Safari 18.4. Confirm these against the latest compat data when you start, and tell me if anything has moved.
 
 ### Platform abstraction
 

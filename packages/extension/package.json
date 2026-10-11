@@ -1,0 +1,14 @@
+{
+  "name": "@cv-autofill/extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "build": "wxt build",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "wxt": "0.21.4"
+  }
+}

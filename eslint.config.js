@@ -3,7 +3,7 @@ import comments from "@eslint-community/eslint-plugin-eslint-comments/configs";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/coverage/", "backend/"] },
+  { ignores: ["**/coverage/", "**/build/", "**/.wxt/", "backend/"] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   comments.recommended,
