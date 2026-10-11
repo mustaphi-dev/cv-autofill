@@ -4,15 +4,15 @@ Status: draft for review. Scope: Release 1 (Chromium extension, backend with CV 
 
 ## Assets
 
-| Asset | Where it lives | Why it matters |
-|---|---|---|
-| Profile (all CV data) | Extension local storage, optionally encrypted | Personal data. Leaking it is the worst outcome. |
-| Stored CV and cover letter files | Extension IndexedDB | Same. |
-| CV during parsing | Backend memory, LLM provider in transit | Same, and it crosses two trust boundaries. |
-| Per-install API key | Extension local storage, hash in PostgreSQL | Spends our LLM budget, links requests to one install. |
-| LLM provider key | Backend environment only | Unlimited spend if stolen. |
-| Telemetry and problem reports | PostgreSQL | Could reveal where a user applied if not scrubbed and unlinkable. |
-| Admin credentials | Admin's password manager | Full read of telemetry, key revocation. |
+| Asset                            | Where it lives                                | Why it matters                                                    |
+| -------------------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| Profile (all CV data)            | Extension local storage, optionally encrypted | Personal data. Leaking it is the worst outcome.                   |
+| Stored CV and cover letter files | Extension IndexedDB                           | Same.                                                             |
+| CV during parsing                | Backend memory, LLM provider in transit       | Same, and it crosses two trust boundaries.                        |
+| Per-install API key              | Extension local storage, hash in PostgreSQL   | Spends our LLM budget, links requests to one install.             |
+| LLM provider key                 | Backend environment only                      | Unlimited spend if stolen.                                        |
+| Telemetry and problem reports    | PostgreSQL                                    | Could reveal where a user applied if not scrubbed and unlinkable. |
+| Admin credentials                | Admin's password manager                      | Full read of telemetry, key revocation.                           |
 
 ## Trust boundaries
 
@@ -58,14 +58,14 @@ flowchart LR
 
 **What it shows.** Anything on the web page is untrusted, including our own page script, because it runs in the page's JavaScript context. The browser keeps the extension's isolated world, background and storage away from the page. Our backend is trusted but only reachable over HTTPS with a per-install key that any user can extract, so it must treat every request as potentially abusive. The LLM provider and error tracker are third parties we trust only as far as their contracts go, so we send them as little as possible and validate everything that comes back.
 
-| Boundary | What crosses it | Main control |
-|---|---|---|
-| B1 page ↔ content script | Labels, attributes, DOM structure in; field values out | Page text treated as data only. Content script never evaluates page strings. |
-| B2 content script → MAIN world | One field reference and the value for that field | Never the profile, no secrets. Every result re-read from the isolated world. |
-| B3 content script ↔ background | Profile slices, session, file chunks, events | Schema validation on every message, sender checked (`sender.id`, tab). |
-| B4 extension ↔ backend | CV (parse), scrubbed events, reports, form structure | Per-install key, quotas, size limits, Pydantic validation, server-side scrubbing. |
-| B5 backend ↔ LLM | CV text, form structure; JSON back | Zero-retention option, closed output schema, validation, budget cap. |
-| B6 backend → error tracker | Exceptions | Scrubbing hook that drops request bodies and all string values from parse requests. |
+| Boundary                       | What crosses it                                        | Main control                                                                        |
+| ------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| B1 page ↔ content script       | Labels, attributes, DOM structure in; field values out | Page text treated as data only. Content script never evaluates page strings.        |
+| B2 content script → MAIN world | One field reference and the value for that field       | Never the profile, no secrets. Every result re-read from the isolated world.        |
+| B3 content script ↔ background | Profile slices, session, file chunks, events           | Schema validation on every message, sender checked (`sender.id`, tab).              |
+| B4 extension ↔ backend         | CV (parse), scrubbed events, reports, form structure   | Per-install key, quotas, size limits, Pydantic validation, server-side scrubbing.   |
+| B5 backend ↔ LLM               | CV text, form structure; JSON back                     | Zero-retention option, closed output schema, validation, budget cap.                |
+| B6 backend → error tracker     | Exceptions                                             | Scrubbing hook that drops request bodies and all string values from parse requests. |
 
 ## Threats and mitigations
 
@@ -124,7 +124,7 @@ Format: threat, impact, mitigations, residual risk, how we prove the mitigation 
 - **Decided model:**
   - Required `host_permissions`: none.
   - Main page: the toolbar click that opens the panel grants `activeTab`. If that access has lapsed, Fill asks for that one site.
-  - Cross-origin iframes and the Greenhouse API: `optional_host_permissions` is set to `https://*/*` so that *one exact site* can be asked for at runtime, the first time a fill needs it. Nothing is granted at install. The store listing explains why.
+  - Cross-origin iframes and the Greenhouse API: `optional_host_permissions` is set to `https://*/*` so that _one exact site_ can be asked for at runtime, the first time a fill needs it. Nothing is granted at install. The store listing explains why.
   - No persistent content script registration. Scripts are injected per tab after a user click. The floating button is re-injected only into a tab with an active session where access is still held.
 - **Residual:** the manifest lists `https://*/*` under optional permissions, which a store reviewer may question. The justification is drafted with the store listing.
 - **Proof:** CI check that the built manifest's required `host_permissions` is empty. E2E test that each request names one exact origin.
