@@ -91,7 +91,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 
 ## M2. Shared schemas, profile model, options page
 
-**Features:** profile schema (JSON Resume section layout, every section in spec section 2, `id`, array position as order, `{year, month}` dates, bullet descriptions, aliases, `schemaVersion`); frozen per-version profile fixtures (migrations arrive with version 2); JSON Schema export and generated Pydantic models; storage layer in the background; options page with JSON import and export, manual editing, drag to reorder, and delete-all.
+**Features:** profile schema (JSON Resume section layout, every section in spec section 2, `id`, array position as order, `{year, month}` dates, bullet descriptions, aliases, `schemaVersion`); frozen per-version profile fixtures (migrations arrive with version 2); JSON Schema export with a CI drift check; storage layer in the background; options page with JSON import and export, manual editing, drag to reorder, and delete-all.
 
 **Acceptance criteria**
 
@@ -99,13 +99,15 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - Importing an invalid JSON file shows a clear error and changes nothing.
 - Exporting and then re-importing a profile gives an identical profile.
 - Every frozen old-version profile (`packages/schema/fixtures/profile.v<N>.json`) loads with the current code. From version 2 on, it loads through migrations, so a version bump cannot ship without one (decided 2026-10-11: no migration code until version 2 exists).
-- Generated Pydantic models match the Zod schemas (CI check fails on drift).
+- The exported JSON Schema (`packages/schema/profile.v1.schema.json`) matches the Zod schema. CI fails on drift. Pydantic generation from it moved to M3, its first user (decided 2026-10-11).
 - Options page works by keyboard alone, has labelled controls and visible focus, and works in light and dark mode. Checked with an automated accessibility scan plus a manual screen reader pass.
 - Delete-all removes the profile, files and settings, verified by test.
 
 ## M3. Backend skeleton and CV parsing
 
 **Features:** FastAPI app, Docker, Compose for local Postgres and Redis; Alembic; `/healthz`, `/readyz`; `POST /v1/installs` with hashed keys, rotation, revocation and issuance abuse protection; rate limiting and quotas in Key Value with `429` + `Retry-After`; `GET /v1/status`; `POST /v1/parse` with column-aware `pdfplumber` extraction, `python-docx`, scanned-PDF detection, LLM provider interface with failover, schema-constrained output; consent notice and review screen in the options page; CV eval set and model selection; Render deployment in Frankfurt; uptime monitor; Sentry-compatible error tracking with scrubbing; privacy policy and DPIA drafts.
+
+**Moved from M2:** Pydantic models generated from `packages/schema/profile.v1.schema.json`, with a CI check that they match it, plus Python tests for the rules JSON Schema cannot carry (current entries have no end date, end not before start, "other" links need a label, no duplicate ids).
 
 **ADRs:** hosting and scaling path (Render to Cloud Run); LLM provider and model (with eval results); install key issuance and abuse protection; parse request memory handling.
 
@@ -120,6 +122,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - With the LLM provider mocked as down, the backend fails over to the second provider. With both down, the user gets a clear message pointing to JSON import or manual entry.
 - The review screen highlights the spec's listed parser mistakes. The user can move, merge, split, edit and delete entries. Nothing is saved before Confirm (verified by test).
 - Declining consent never sends the file (verified by a network assertion in test).
+- Generated Pydantic models match the committed JSON Schema (CI fails on drift), and the parse endpoint's output passes the extension's Zod schema.
 - Deployed to Render in Frankfurt (web service, PostgreSQL and Key Value). Health checks and the uptime alert work.
 - The configured LLM providers (primary and failover) process data only in the EU, confirmed from their DPAs in the provider ADR.
 

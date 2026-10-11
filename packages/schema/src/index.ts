@@ -13,8 +13,13 @@ const MAX_ENTRIES = 100;
 const MAX_BULLETS = 50;
 const MAX_TAGS = 50;
 
-const text = (max = NAME) => z.string().trim().min(1).max(max);
-const url = z.url({ protocol: /^https?$/ }).max(URL_MAX);
+// Rules are written as regexes so the exported JSON Schema (used by the
+// backend) carries them too: text is not blank, links are http(s) only.
+const text = (max = NAME) => z.string().trim().max(max).regex(/\S/);
+const url = z
+  .url()
+  .max(URL_MAX)
+  .regex(/^https?:\/\//i);
 const tags = z.array(text()).max(MAX_TAGS);
 const bullets = z.array(text(BULLET)).max(MAX_BULLETS);
 const id = z.uuid();
