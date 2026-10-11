@@ -101,7 +101,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - Every frozen old-version profile (`packages/schema/fixtures/profile.v<N>.json`) loads with the current code. From version 2 on, it loads through migrations, so a version bump cannot ship without one (decided 2026-10-11: no migration code until version 2 exists).
 - The exported JSON Schema (`packages/schema/profile.v1.schema.json`) matches the Zod schema. CI fails on drift. Pydantic generation from it moved to M3, its first user (decided 2026-10-11).
 - Options page works by keyboard alone, has labelled controls and visible focus, and works in light and dark mode. Checked with an automated accessibility scan plus a manual screen reader pass.
-- Delete-all removes the profile, files and settings, verified by test.
+- Delete-all removes the profile and settings, verified by test (stored CV files: see M3).
 
 ## M3. Backend skeleton and CV parsing
 
@@ -121,6 +121,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - Quota exhaustion returns `429` with `Retry-After`. The options page shows "N of 3 CV parses left today" and the reset time.
 - With the LLM provider mocked as down, the backend fails over to the second provider. With both down, the user gets a clear message pointing to JSON import or manual entry.
 - The review screen highlights the spec's listed parser mistakes. The user can move, merge, split, edit and delete entries. Nothing is saved before Confirm (verified by test).
+- Delete-all also clears the stored CV file in IndexedDB (moved from M2, where no files existed yet).
 - Declining consent never sends the file (verified by a network assertion in test).
 - Generated Pydantic models match the committed JSON Schema (CI fails on drift), and the parse endpoint's output passes the extension's Zod schema.
 - Deployed to Render in Frankfurt (web service, PostgreSQL and Key Value). Health checks and the uptime alert work.

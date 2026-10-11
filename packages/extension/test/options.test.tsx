@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
+import { Profile } from "@cv-autofill/schema";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../entrypoints/options/App";
 import { send } from "../lib/send";
@@ -246,4 +247,28 @@ test("leaves the loading state when the load throws", async () => {
   await screen.findByText("Something went wrong. Please try again.");
   expect(screen.queryByText("Loading…")).toBeNull();
   screen.getByText("Your saved profile could not be loaded.");
+});
+
+test("exporting and re-importing gives an identical profile", async () => {
+  const original = Profile.parse(v1);
+  stored = original;
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+    () => undefined,
+  );
+  const { user } = await setup();
+  await user.click(
+    screen.getByRole("button", { name: "Export profile (JSON)" }),
+  );
+  const [blob] = createObjectURL.mock.lastCall ?? [];
+  if (!blob) throw new Error("no download was created");
+
+  stored = null;
+  await importFile(
+    user,
+    new File([await blob.text()], "cv-autofill-profile.json"),
+  );
+  await user.click(screen.getByRole("button", { name: "Replace" }));
+  await waitFor(() => {
+    expect(stored).toEqual(original);
+  });
 });
