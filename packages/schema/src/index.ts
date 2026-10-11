@@ -311,7 +311,18 @@ export const Request = z.discriminatedUnion("type", [
 ]);
 export type Request = z.infer<typeof Request>;
 
-export type ReplyError =
-  "forbidden" | "invalid_request" | "stored_profile_invalid" | "storage_failed";
-export type Reply =
-  { ok: true; data: unknown } | { ok: false; error: ReplyError };
+export const Reply = z.union([
+  z.strictObject({ ok: z.literal(true), data: z.unknown() }),
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.enum([
+      "forbidden",
+      "invalid_request",
+      "stored_profile_invalid",
+      "storage_failed",
+    ]),
+  }),
+]);
+export type Reply = z.infer<typeof Reply>;
+
+export type Issue = z.core.$ZodIssue;

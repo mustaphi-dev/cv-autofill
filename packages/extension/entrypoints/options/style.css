@@ -1,0 +1,70 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #555555;
+  --border: #767676;
+  --danger: #b3261e;
+  --focus: #0b57d0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1f;
+    --fg: #ececf1;
+    --muted: #b4b4bc;
+    --border: #8b8b96;
+    --danger: #ffb4ab;
+    --focus: #a8c7fa;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+section {
+  border-top: 1px solid var(--border);
+  padding: 1rem 0;
+}
+.muted {
+  color: var(--muted);
+}
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+[role="alert"] {
+  color: var(--danger);
+}
+dialog {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 28rem;
+}
