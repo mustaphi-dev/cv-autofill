@@ -192,6 +192,7 @@ Treat these as a starting point. Verify against current docs and live pages befo
      Clicking any item scrolls the page to that field and briefly outlines it, then the outline fades. The extension never leaves permanent styling on the page. Undo sits at the bottom.
      **Report a problem**: every cross or "Needs you" item, and the panel as a whole, has a "Report a problem" button. It is optional and never automatic. Clicking it shows the user exactly what will be sent before anything leaves the browser: the page's form structure (headings, labels, field types, layout, which fields failed and why), with every value removed and the text scrubbed, plus an optional comment box. Nothing is sent until the user clicks Send. No screenshots and no raw page copies are ever sent from users' browsers.
    - **Profile**: view and edit the stored profile, reorder entries, replace the CV. Edits apply to future fills.
+   - **Floating Fill button**: while a fill session is active in a tab and the panel is closed, a small Fill button floats on the page. Clicking it fills the current step, exactly like the panel's Fill button. It never clicks Next or anything else on the page. On a step with nothing left to fill, it says so. It lives in a closed shadow root, reacts only to trusted clicks (`isTrusted`), is keyboard accessible, and is removed when the panel opens or the session ends. It leaves no styling on the page.
 3. **Content script (isolated world)**: detection, planning, orchestration, filling and verification wherever the isolated world works. Talks to the background for storage and network.
 4. **Page script (MAIN world)**: a small, dumb executor used only for strategies that do not work from the isolated world. The MAIN world cannot be secured: the page can read and tamper with anything in it, including any token. So the design must not depend on secrecy there. It receives one instruction at a time (field reference plus the single value going into that field, which the page will see anyway once filled). It never receives the profile. The content script never trusts anything it reports back: every result is verified by reading the field from the isolated world.
 5. **Background**: owns all storage, network calls, session state and permissions. Holds nothing important in memory. Resumes correctly after being killed mid-fill.
@@ -213,7 +214,7 @@ Base it on the JSON Resume schema, extended:
 
 Each stage is a separate module in `packages/core` with its own tests. Stages communicate through typed plans, not shared mutable state.
 
-0. **User-initiated only.** The extension never scans pages, pops up, or acts on its own. Nothing runs until the user clicks Fill. All steps below happen only after that click.
+0. **User-initiated only.** The extension never scans pages or acts on its own. Nothing runs on a page until the user clicks Fill there. The only thing it shows on a page without a new click is the floating Fill button (section 5), and only during a fill session the user started. Every step below happens only after a Fill click.
 1. **Identify the platform** (after the click): URL patterns, then DOM signatures, to pick the right adapter. Check inside iframes too.
 2. **Build a form model**: a normalised tree of sections, repeating blocks and fields with every signal attached (label text from `<label for>`, `aria-labelledby`, `aria-label`, `name`, `id`, `placeholder`, `autocomplete`, nearby text, heading, block index, widget type, constraints like `maxlength`).
 3. **Map the model to the profile**: section 8 describes the hybrid mapper. Output a fill plan where every field has a target profile key and a confidence score. Below threshold, flag and skip. Never guess.
@@ -300,13 +301,14 @@ Provider: ask me (section 16). Keep the provider behind an interface so it can b
 This is the hardest part. Design it carefully.
 
 - A fill session per tab is stored by the background in `storage.session`: platform, job URL without query string, completed sections and entries, current step, session ID.
-- The user clicks Fill on each step. The extension never fills a new step on its own.
+- The user clicks Fill on each step, either in the panel or on the floating Fill button (section 5). The extension never fills a new step on its own.
 - The session remembers what earlier steps already filled, so each click only fills what is on the current step and never repeats or duplicates work.
 - The session is tied to one application in one tab. It ends when the tab closes, the user leaves the application's site, or the user clicks "Start over".
 - Content script lifetime differs between browsers (section 3), so the session lives in the background, not in the page.
 - After a full reload, resume from the stored session.
 - The panel shows whether the current step is fully verified before I click Next.
 - The extension never clicks Next and never detects step changes to act on its own. The user moves between steps and clicks Fill on each one. That is the whole interaction.
+- After a full page load during an active session, the background may put the floating Fill button back on the page, but only if it still has access to that page. It never asks for new access just to show the button. It does not read or fill anything until the button is clicked.
 - Workday adapter must handle "My Information", "My Experience" (work, education, skills, CV upload) and the review step.
 
 ## 10. Reporting
@@ -404,7 +406,7 @@ Produce a short threat model before coding. At minimum cover:
 - Overly broad host permissions.
 
 Rules:
-- Permission model: the Fill click grants `activeTab` for the main frame. Cross-origin iframe origins (for example Greenhouse embeds) are declared as optional host permissions and requested the first time a fill needs them. Scripts are injected on click with `scripting.executeScript` (`allFrames` where permitted). No persistent content script registration, since nothing may run before the user clicks Fill. Never request access to all sites.
+- Permission model: the toolbar click that opens the panel grants `activeTab` for the main frame. If that access has lapsed, Fill requests the page's origin at runtime. Cross-origin iframe origins (for example Greenhouse embeds) and the Greenhouse API are requested the same way, the first time a fill needs them. Because these origins cannot be listed in advance, `https://*/*` is declared under `optional_host_permissions` only. That grants nothing at install, and every request names one exact origin. Required host permissions are empty. Scripts are injected after a user click with `scripting.executeScript` (`allFrames` where permitted). No persistent content script registration. The one exception is re-injecting the floating Fill button into a tab with an active session (section 9). Never request access to all sites.
 - No remote code. Everything ships in the package (required by store policies anyway).
 - Strict Content Security Policy for extension pages.
 - No secrets in the repo. Pre-commit secret scanning.

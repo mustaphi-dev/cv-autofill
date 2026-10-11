@@ -1,6 +1,6 @@
 # Threat model
 
-Status: draft for review. Scope: Release 1 (Chromium extension, backend with CV parsing and telemetry), plus the AI mapper (Release 3) because its design is fixed now. Based on spec section 12.
+Status: draft for review. Scope: Release 1 (Chromium extension, backend with CV parsing and telemetry), plus the AI mapper (Release 3) because its design is fixed now. Based on spec section 12. Updated 2026-10-11 with the decisions on page access, EU hosting, telemetry linkability and the floating Fill button.
 
 ## Assets
 
@@ -39,7 +39,7 @@ flowchart LR
     end
 
     subgraph third["Semi-trusted: third parties"]
-        llm["LLM provider<br/>(contract: zero retention)"]
+        llm["EU-hosted LLM provider<br/>(DPA: no retention)"]
         err["Error tracker"]
     end
 
@@ -106,9 +106,9 @@ Format: threat, impact, mitigations, residual risk, how we prove the mitigation 
   - Logs: request body logging disabled for `/v1/parse`; test asserts no part of a canary CV appears in captured logs.
   - Crash reports: Sentry scrubbing drops request data and frame locals for this route; test with a forced exception.
   - Disk: file read into memory only (`UploadFile` spooling to disk disabled or size-capped below the spool threshold). Verify FastAPI/Starlette behaviour in M3 and record it.
-  - Provider retention: provider chosen with zero data retention, verified in current terms, named in the privacy policy.
+  - Provider retention: provider chosen for no prompt or output retention, confirmed in its data processing agreement (DPA), and named in the privacy policy.
   - Memory dumps: no core dumps in the container, short-lived request scope. Residual risk accepted (requires host compromise).
-  - Transfer: provider location. A US provider means a restricted transfer under UK GDPR. See plan.md Q6.
+  - Transfer: decided. The backend runs on Render in Frankfurt and the LLM provider is EU-hosted (Germany first, EU failover), so the CV never leaves the EU. UK GDPR treats EEA countries as adequate, so this is not a restricted transfer. The provider's processing location is pinned in config and checked in the M3 ADR.
 - **Proof:** canary-CV test on logs, traces and error tracker; documented provider terms in an ADR.
 
 ### T5. Stolen API key
@@ -121,14 +121,25 @@ Format: threat, impact, mitigations, residual risk, how we prove the mitigation 
 ### T6. Overly broad host permissions
 
 - **Impact:** store rejection, user distrust, larger blast radius if the extension is compromised.
-- **Mitigations:** no `<all_urls>` in required permissions. Access to the job page comes from the Fill click (`activeTab`) or, where `activeTab` does not apply, a runtime request for that one origin. Cross-origin iframe origins are optional host permissions requested the first time a fill needs them. No persistent content scripts. See plan.md Q1 and Q2 for the parts that need verification.
-- **Proof:** CI check that the built manifest's required `host_permissions` is empty or a fixed allow-list.
+- **Decided model:**
+  - Required `host_permissions`: none.
+  - Main page: the toolbar click that opens the panel grants `activeTab`. If that access has lapsed, Fill asks for that one site.
+  - Cross-origin iframes and the Greenhouse API: `optional_host_permissions` is set to `https://*/*` so that *one exact site* can be asked for at runtime, the first time a fill needs it. Nothing is granted at install. The store listing explains why.
+  - No persistent content script registration. Scripts are injected per tab after a user click. The floating button is re-injected only into a tab with an active session where access is still held.
+- **Residual:** the manifest lists `https://*/*` under optional permissions, which a store reviewer may question. The justification is drafted with the store listing.
+- **Proof:** CI check that the built manifest's required `host_permissions` is empty. E2E test that each request names one exact origin.
 
 ### T7. Telemetry linkability (found while modelling)
 
 - **Impact:** events sent with a stable per-install key let the backend join rotating install IDs back into one user's application history, defeating the 30-day rotation.
-- **Mitigations:** the backend never stores the key ID, IP address or request ID alongside events. Quota for events is counted in Key Value with a short TTL and not joined to stored rows. Documented in the privacy policy.
-- **Residual:** we could link them at request time if we chose to. That is a policy promise, not a technical guarantee. See plan.md Q7.
+- **Decided mitigations:**
+  - The install key authenticates the request (for rate limiting and abuse control), then is dropped. Event and problem-report rows have no key ID, IP address or request ID column. A test checks the table columns, so adding one later fails CI.
+  - Logs for `/v1/events` and `/v1/problem-reports` record no IP address, key ID or install ID: only route, status, batch size and duration.
+  - Rate-limit counters in Key Value hold counts only, keyed by key hash, and expire within 24 hours.
+  - When the install ID rotates, the extension sends everything queued under the old ID first, so one batch never carries two IDs.
+  - The extension keeps its past install IDs locally until the 90-day retention window has passed, so a deletion request can still reach every one of them.
+  - The privacy policy states all of the above.
+- **Residual:** the backend could link IDs at request time if its code were changed to do so. The above makes that a visible, tested code change rather than a quiet one. Upgrade path, only if a technical guarantee is ever needed: anonymous rate-limit tokens (Privacy Pass style blind signatures).
 
 ### T8. Malicious data entering the extension
 
@@ -143,6 +154,13 @@ Format: threat, impact, mitigations, residual risk, how we prove the mitigation 
 ### T10. Supply chain
 
 - **Mitigations:** lockfiles, licence check per dependency, Dependabot or Renovate, no remote code, pinned GitHub Actions by SHA.
+
+### T11. Hostile page abuses the floating Fill button
+
+- **Impact:** the page triggers a fill the user did not ask for, restyles or hides the button, or reads it.
+- **Mitigations:** the button reacts only to `isTrusted` clicks, so the page cannot press it. It lives in a closed shadow root with its own styles. It exists only while the user has an active session in that tab, and only fills the current step, which the user already started. It carries no data; the session stays in the background.
+- **Residual:** a page can hide or cover the button. The user then opens the panel instead. A page can overlay an invisible element to trick a click, but the worst outcome is a fill the user had already started a session for.
+- **Proof:** E2E test that a synthetic `click()` from page script does nothing, and that the button is gone after the session ends.
 
 ## Out of scope for this model
 

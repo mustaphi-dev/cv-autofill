@@ -22,6 +22,7 @@ flowchart LR
             cs["Content script<br/>(isolated world)<br/>detect, plan, fill, verify"]
             ps["Page script<br/>(MAIN world)<br/>dumb executor, one value at a time"]
             dom["Page DOM<br/>ATS form, iframes"]
+            fab["Floating Fill button<br/>(closed shadow root,<br/>only while a session is active<br/>and the panel is closed)"]
         end
     end
 
@@ -31,16 +32,18 @@ flowchart LR
         kv[("Render Key Value<br/>(Redis-compatible)<br/>rate-limit and quota counters")]
     end
 
-    llm["Hosted LLM provider<br/>open-weight model,<br/>zero data retention<br/>+ failover provider"]
+    llm["EU-hosted LLM provider<br/>(Germany primary, EU failover)<br/>open-weight model,<br/>no data retention"]
     sentry["Error tracker<br/>(Sentry-compatible,<br/>scrubbed)"]
     gh["Greenhouse Job Board API<br/>(public, read-only)"]
 
     user --> panel
     user --> options
+    user --> fab
+    fab -->|"trusted click only"| cs
     panel <-->|"runtime messages<br/>(schema-validated JSON)"| bg
     options <-->|"runtime messages"| bg
     bg <--> store
-    bg -->|"scripting.executeScript<br/>on Fill click only"| cs
+    bg -->|"scripting.executeScript<br/>after a user click only"| cs
     cs <-->|"runtime messages"| bg
     cs -->|"reads and writes fields"| dom
     cs -->|"one instruction"| ps
@@ -53,9 +56,9 @@ flowchart LR
     api -.->|"errors, no payloads"| sentry
 ```
 
-**What it shows.** The extension has four parts. The panel and options page are the user interface. The background owns everything that must survive: storage, network calls, fill sessions and permissions. The content script is injected into the job page only when the user clicks Fill, and does all detection, filling and checking. The page script runs inside the page's own JavaScript context and is used only for the few widgets that ignore the content script; it gets one value at a time and is never trusted.
+**What it shows.** The extension has four parts. The panel and options page are the user interface. The background owns everything that must survive: storage, network calls, fill sessions and permissions. The content script is injected into the job page only after the user clicks Fill, and does all detection, filling and checking. While a fill session is active and the panel is closed, it also shows a small floating Fill button on the page so the user can fill the next step without reopening the panel (section 3). The page script runs inside the page's own JavaScript context and is used only for the few widgets that ignore the content script; it gets one value at a time and is never trusted.
 
-Every network call goes out from the background. The backend relays CV text (one-time parse) or form structure (AI mapping, Release 3) to a hosted LLM, stores only scrubbed telemetry and problem reports in PostgreSQL, and keeps rate-limit counters in Key Value. Filling itself never needs the backend: if the backend is down, the extension still fills with its built-in rules.
+Every network call goes out from the background. The backend runs on Render in Frankfurt and relays CV text (one-time parse) or form structure (AI mapping, Release 3) to an LLM provider hosted in the EU, so CV data never leaves the EU, stores only scrubbed telemetry and problem reports in PostgreSQL, and keeps rate-limit counters in Key Value. Filling itself never needs the backend: if the backend is down, the extension still fills with its built-in rules.
 
 ## 2. Fill flow (one step of one form)
 
@@ -70,9 +73,10 @@ sequenceDiagram
     participant D as Page DOM
 
     U->>P: Click Fill
+    Note over U,P: The floating button, when shown, sends the same fill.start
     P->>B: fill.start(tabId)
-    B->>B: Check permissions for page and iframe origins
-    opt Cross-origin iframe origin not yet granted
+    B->>B: Check access to page and iframe origins
+    opt Page or iframe origin not yet granted
         B->>P: Ask for that origin
         P->>U: Permission prompt (user gesture)
         U-->>P: Allow
@@ -122,19 +126,29 @@ Stop and pause on user typing (not drawn) cancel the loop between fields; the co
 
 ## 3. Multi-step flow (fill session lifecycle)
 
+Two ways to start a fill, both always a user click:
+
+- **Panel open:** the Fill button in the panel.
+- **Panel closed:** a small floating Fill button on the page. It exists only while a fill session is active in that tab. Clicking it fills the current step, exactly like the panel button. If the step has nothing left to fill, it says so. It never clicks the site's Next button.
+
 ```mermaid
 stateDiagram-v2
     [*] --> NoSession
-    NoSession --> Active: User clicks Fill on a supported page
-    Active --> Filling: Fill clicked on current step
+    NoSession --> Active: User clicks Fill in the panel
+    state Active {
+        [*] --> PanelOpen
+        PanelOpen --> PanelClosed: User closes panel (floating button appears)
+        PanelClosed --> PanelOpen: User opens panel (floating button removed)
+    }
+    Active --> Filling: Fill clicked (panel or floating button)
     Filling --> Active: Step finished (fields recorded in session)
     Filling --> Active: User clicks Stop
-    Active --> Active: User moves to next step (extension does nothing)
+    Active --> Active: User moves to the next step with the site's own button
     Active --> Active: Page reload or background restarted (session read back from storage.session)
     Active --> Ended: User clicks Start over
     Active --> Ended: Tab closed
     Active --> Ended: User leaves the application's site
-    Ended --> [*]: Session deleted
+    Ended --> [*]: Session deleted, floating button removed
 ```
 
 ```mermaid
@@ -145,30 +159,45 @@ sequenceDiagram
     participant B as Background
     participant S as storage.session
     participant C as Content script
+    participant F as Floating button
 
     U->>P: Fill (step 1)
     P->>B: fill.start(tabId)
     B->>S: get session[tabId]
     S-->>B: none
-    B->>S: create {sessionId, platform, jobUrl without query, step 1, done: []}
+    B->>S: create {sessionId, platform, jobUrl without query, done: []}
     B->>C: Inject + session
     C->>B: field done (repeated)
     B->>S: append to done
-    Note over U,C: User clicks the site's own Next button. The extension does not react.
-    U->>P: Fill (step 2)
-    P->>B: fill.start(tabId)
+    U->>P: Closes panel
+    P--xB: Panel connection drops
+    B->>C: Show floating button
+    C->>F: Mount in closed shadow root
+    Note over U,C: User clicks the site's own Next button. The extension never does.
+    opt Full page load between steps
+        B->>B: tabs.onUpdated, same site, session active
+        alt Extension still has access to this page
+            B->>C: Re-inject in button-only mode (no reading or filling)
+            C->>F: Mount
+        else Access lapsed
+            Note over B,F: No button. User opens the panel from the toolbar, which restores access.
+        end
+    end
+    U->>F: Click Fill (step 2)
+    F->>C: Click (ignored unless isTrusted)
+    C->>B: fill.start(tabId)
     B->>S: get session[tabId]
     S-->>B: session (step 1 done list)
-    B->>C: Inject + session
+    B->>C: Session
     C->>C: Skip anything already in done, fill only this step
-    Note over B,S: Background may be killed at any time. Every write goes to S first, nothing important is kept in memory.
+    Note over B,S: Background may be killed at any time. Every write goes to S first.
     U->>U: Closes tab
     B->>S: tabs.onRemoved: delete session[tabId]
 ```
 
-**What it shows.** A fill session belongs to one tab and one application. The background keeps it in `storage.session` (in memory, cleared when the browser closes), never in the page, because content scripts are thrown away on navigation. Each Fill click reads the session, fills only what is new on the current step, and writes progress back field by field, so a reload or a killed background loses nothing. The extension never presses Next and never reacts to step changes. The session ends when the tab closes, the user leaves the site, or the user clicks "Start over".
+**What it shows.** A fill session belongs to one tab and one application. The background keeps it in `storage.session` (in memory, cleared when the browser closes), never in the page, because content scripts are thrown away on navigation. Each Fill click reads the session, fills only what is new on the current step, and writes progress back field by field, so a reload or a killed background loses nothing.
 
-Release 1 note: Greenhouse and Lever are single-page forms. See plan.md, question Q12, on whether the multi-step session belongs in Release 1 or Release 2 (Workday).
+When the user closes the panel during a session, a floating Fill button appears on the page. It sits inside a closed shadow root so it cannot pick up or leave page styling, and is removed when the panel reopens or the session ends. It only reacts to real clicks (`isTrusted`), so the page cannot press it for the user. After a full page load the background puts the button back only if the extension still has access to that page. It never asks for new access just to show the button, and never reads or fills the page until the button is clicked. The extension never presses Next. The session ends when the tab closes, the user leaves the site, or the user clicks "Start over".
 
 ## 4. CV setup flow
 
@@ -179,7 +208,7 @@ sequenceDiagram
     participant O as Options page
     participant B as Background
     participant A as Backend /v1/parse
-    participant L as LLM provider
+    participant L as EU LLM provider
 
     U->>O: Open options, choose "Upload CV"
     O->>U: Plain-English notice: CV is sent to our server for parsing, never stored
@@ -231,7 +260,7 @@ flowchart TB
     end
 
     subgraph stored["Reaches the backend and is stored (opt-in only)"]
-        events["Field events: scrubbed labels and signals,<br/>outcome, strategy, host + path,<br/>day-level date, rotating install ID"]
+        events["Field events: scrubbed labels and signals,<br/>outcome, strategy, host + path,<br/>day-level date, rotating install ID.<br/>No API key, IP address or<br/>request ID stored with it"]
         reports["Problem reports: scrubbed form structure<br/>+ optional comment, previewed before Send"]
         keys["Install key hash, quota counters"]
     end
@@ -245,7 +274,7 @@ flowchart TB
     profile -->|"scrub list: profile values removed<br/>from every outgoing text"| scrub["Scrubber in extension"]
     scrub --> events
     scrub --> reports
-    cvparse --> llmp["LLM provider<br/>(zero retention, relay only)"]
+    cvparse --> llmp["EU-hosted LLM provider<br/>(no retention, relay only)"]
     formstruct --> llmp
     events --> pg[("PostgreSQL<br/>raw events deleted after 90 days,<br/>aggregates kept")]
     reports --> pg
@@ -255,7 +284,7 @@ flowchart TB
 
 **What it shows.** The profile, stored files, filled values, fill sessions and the encryption key never leave the user's browser. The only things that can reach our backend are:
 
-- The CV itself, once, at upload time, after consent. It is held in memory for that one request and passed to the LLM provider under a zero-retention setting. It is never written to disk, the database, logs or the error tracker, and a test proves request bodies for this endpoint never reach logs.
+- The CV itself, once, at upload time, after consent. It is held in memory for that one request and passed to an EU-hosted LLM provider that does not retain it, so it never leaves the EU. It is never written to disk, the database, logs or the error tracker, and a test proves request bodies for this endpoint never reach logs.
 - Form structure (labels and field types, never values) for the AI mapper, from Release 3.
 - If the user opts in: per-field events and problem reports. Both are scrubbed in the browser first, removing every substring that matches a profile value plus anything that looks like an email, phone number, URL or name. The backend scrubs again as a second line of defence. The install ID rotates every 30 days and dates are rounded to the day, so events cannot easily be joined into a list of applications.
 
