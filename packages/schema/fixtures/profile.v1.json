@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "personal": {
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "headline": "Software engineer",
+    "email": "ada@example.com",
+    "phone": { "countryCode": "+44", "number": "7700900123" },
+    "address": { "city": "London", "country": "United Kingdom" }
+  },
+  "summary": "Engineer who builds reliable systems.",
+  "links": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0001",
+      "kind": "github",
+      "url": "https://github.com/ada"
+    }
+  ],
+  "work": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0002",
+      "company": "Analytical Engines Ltd",
+      "title": "Senior Engineer",
+      "employmentType": "full-time",
+      "workplace": "hybrid",
+      "start": { "year": 2021, "month": 3 },
+      "current": true,
+      "bullets": ["Led the parser rewrite", "Cut build time by 40%"],
+      "variants": { "short": ["Led the parser rewrite"] },
+      "aliases": ["AEL"]
+    }
+  ],
+  "projects": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0003",
+      "name": "Difference Engine",
+      "organisation": "Personal",
+      "repositoryUrl": "https://github.com/ada/engine",
+      "technologies": ["TypeScript"]
+    }
+  ],
+  "education": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0004",
+      "school": "University of London",
+      "degree": "BSc",
+      "start": { "year": 2014 },
+      "end": { "year": 2017 }
+    }
+  ],
+  "publications": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0005",
+      "title": "Notes",
+      "authors": ["A. Lovelace"],
+      "status": "published"
+    }
+  ],
+  "languages": [
+    {
+      "id": "0b8e6c64-0d3a-4c1e-9a55-1d1f6b3a0006",
+      "language": "English",
+      "proficiency": "native"
+    }
+  ]
+}

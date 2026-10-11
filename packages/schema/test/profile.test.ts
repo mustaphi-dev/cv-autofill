@@ -1,69 +1,19 @@
 import { describe, expect, test } from "vitest";
 import { Profile, Project, Publication, Work } from "../src/index";
 
-const uuid = () => crypto.randomUUID();
+// Frozen example profiles, one per released schema version. Never edit one:
+// add a new file for each new version. If an old one stops loading, write a
+// migration for it (spec section 5).
+import v1 from "../fixtures/profile.v1.json";
 
-const full = {
-  schemaVersion: 1,
-  personal: {
-    firstName: "Ada",
-    lastName: "Lovelace",
-    headline: "Software engineer",
-    email: "ada@example.com",
-    phone: { countryCode: "+44", number: "7700900123" },
-    address: { city: "London", country: "United Kingdom" },
-  },
-  summary: "Engineer who builds reliable systems.",
-  links: [{ id: uuid(), kind: "github", url: "https://github.com/ada" }],
-  work: [
-    {
-      id: uuid(),
-      company: "Analytical Engines Ltd",
-      title: "Senior Engineer",
-      employmentType: "full-time",
-      workplace: "hybrid",
-      start: { year: 2021, month: 3 },
-      current: true,
-      bullets: ["Led the parser rewrite", "Cut build time by 40%"],
-      variants: { short: ["Led the parser rewrite"] },
-      aliases: ["AEL"],
-    },
-  ],
-  projects: [
-    {
-      id: uuid(),
-      name: "Difference Engine",
-      organisation: "Personal",
-      repositoryUrl: "https://github.com/ada/engine",
-      technologies: ["TypeScript"],
-    },
-  ],
-  education: [
-    {
-      id: uuid(),
-      school: "University of London",
-      degree: "BSc",
-      start: { year: 2014 },
-      end: { year: 2017 },
-    },
-  ],
-  publications: [
-    {
-      id: uuid(),
-      title: "Notes",
-      authors: ["A. Lovelace"],
-      status: "published",
-    },
-  ],
-  languages: [{ id: uuid(), language: "English", proficiency: "native" }],
-};
+const uuid = () => crypto.randomUUID();
 
 const issues = (r: { success: boolean; error?: { issues: unknown[] } }) =>
   r.success ? [] : (r.error?.issues ?? []);
 
 describe("Profile", () => {
-  test("accepts a full profile", () => {
-    expect(issues(Profile.safeParse(full))).toEqual([]);
+  test.each([["v1", v1]])("frozen %s profile still loads", (_, raw) => {
+    expect(issues(Profile.safeParse(raw))).toEqual([]);
   });
 
   test("accepts a minimal profile and fills empty sections", () => {
@@ -77,7 +27,7 @@ describe("Profile", () => {
   });
 
   test("rejects unknown keys instead of dropping them", () => {
-    expect(Profile.safeParse({ ...full, extra: 1 }).success).toBe(false);
+    expect(Profile.safeParse({ ...v1, extra: 1 }).success).toBe(false);
   });
 
   test("rejects two entries with the same id", () => {
@@ -98,15 +48,15 @@ describe("Profile", () => {
 
 describe("sections never mix", () => {
   test("a project cannot validate as a work entry", () => {
-    expect(Work.safeParse(full.projects[0]).success).toBe(false);
+    expect(Work.safeParse(v1.projects[0]).success).toBe(false);
   });
 
   test("a publication cannot validate as a project", () => {
-    expect(Project.safeParse(full.publications[0]).success).toBe(false);
+    expect(Project.safeParse(v1.publications[0]).success).toBe(false);
   });
 
   test("a work entry cannot validate as a publication", () => {
-    expect(Publication.safeParse(full.work[0]).success).toBe(false);
+    expect(Publication.safeParse(v1.work[0]).success).toBe(false);
   });
 });
 

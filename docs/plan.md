@@ -91,14 +91,14 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 
 ## M2. Shared schemas, profile model, options page
 
-**Features:** profile schema (JSON Resume based, every section in spec section 2, `id`, `order`, `{year, month}` dates, bullet descriptions, aliases, `schemaVersion`); migrations framework; JSON Schema export and generated Pydantic models; storage layer in the background; options page with JSON import and export, manual editing, drag to reorder, and delete-all.
+**Features:** profile schema (JSON Resume section layout, every section in spec section 2, `id`, array position as order, `{year, month}` dates, bullet descriptions, aliases, `schemaVersion`); frozen per-version profile fixtures (migrations arrive with version 2); JSON Schema export and generated Pydantic models; storage layer in the background; options page with JSON import and export, manual editing, drag to reorder, and delete-all.
 
 **Acceptance criteria**
 
 - Every profile section in spec section 2 exists as its own typed array. A test fails if a project can be validated as a work entry.
 - Importing an invalid JSON file shows a clear error and changes nothing.
 - Exporting and then re-importing a profile gives an identical profile.
-- A migration from a test v0 profile to v1 has a test.
+- Every frozen old-version profile (`packages/schema/fixtures/profile.v<N>.json`) loads with the current code. From version 2 on, it loads through migrations, so a version bump cannot ship without one (decided 2026-10-11: no migration code until version 2 exists).
 - Generated Pydantic models match the Zod schemas (CI check fails on drift).
 - Options page works by keyboard alone, has labelled controls and visible focus, and works in light and dark mode. Checked with an automated accessibility scan plus a manual screen reader pass.
 - Delete-all removes the profile, files and settings, verified by test.
