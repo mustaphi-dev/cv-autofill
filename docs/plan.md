@@ -41,7 +41,7 @@ Items I could not settle from the spec, found contradictory, or could not verify
 **Facts checked**
 
 - Chrome exposes the `browser` namespace from Chrome 148, and `webextension-polyfill` becomes a no-op there ([Chrome docs](https://developer.chrome.com/docs/extensions/develop/concepts/browser-namespace)). Decided 2026-10-11 in F2: the Chromium minimum is raised to 148, so no polyfill is used (ADR 0001, spec section 3 updated).
-- The minimum versions table in spec section 3 will be checked against current MDN compat data in M1, as the spec asks.
+- Spec section 3 checked against MDN compat data 8.1.5 on 2026-10-11 (M1, F4): every row matches. Added rows for `optional_host_permissions` and Promise-returning message listeners. Re-run at the start of Release 2 and Release 4.
 
 ## LLM budget proposal
 

@@ -93,6 +93,7 @@ Use Manifest V3 for every browser. Use the `browser.*` namespace everywhere. Chr
 | `scripting` `MAIN` world | 102 | 128 | 15.4 | Same. |
 | `match_origin_as_fallback` | 99 | 128 | 18.4 | Needed for `about:blank` and `srcdoc` iframes. |
 | `storage.session` | 102 | 115 | 16.4 | Available everywhere we target. |
+| `optional_host_permissions` (manifest) | 102 | 128 | 15.5 | Lets us ask for one exact site at runtime (section 12). Available everywhere we target. |
 | `storage.session.setAccessLevel` | 102 | **Not supported** | 16.4 | Content scripts cannot read session storage in Firefox. All session reads and writes go through the background via messages, in every browser, so there is one code path. |
 | `sidePanel` API | 114 (`open` from 116) | **Not supported** (uses `sidebar_action`) | **Not supported** | Build the panel UI once as a standalone page. Mount it in Chrome's side panel, Firefox's sidebar, and a popup or in-page panel (inside a closed shadow root) for Safari. |
 | `dom.openOrClosedShadowRoot` | 88 | Not supported, use `element.openOrClosedShadowRoot` (63+) | 26 | Wrap behind one helper. |
@@ -100,11 +101,14 @@ Use Manifest V3 for every browser. Use the `browser.*` namespace everywhere. Chr
 | Host permissions in MV3 | Granted at install | Prompted at install from Firefox 127, can be revoked later | Granted per site by the user | Always check permissions at runtime with `permissions.contains` and request with `permissions.request`. Never assume they are granted. |
 | `activeTab` | Temporary access to the main-frame origin, revoked on navigation to another site | Similar | Similar | Not enough on its own: it does not cover cross-origin iframes (Greenhouse embeds). See section 12 for the permission model. |
 | Messaging serialisation | JSON | Structured clone | Varies | Only send plain JSON-safe objects between contexts. Validate every message with a schema. |
+| `runtime.onMessage` listener returns a Promise | 148 (Chrome docs; MDN data 8.1.5 still says no) | Yes (62 or earlier) | 15.4 | The message layer may return Promises. M4 proves it with a test on Chrome 148, since MDN's data lags Chrome's docs. |
 | Extension URL | Fixed ID | Random UUID per install | Varies | Never hard-code the extension origin. Set `browser_specific_settings.gecko.id` for Firefox. |
 | Content script lifetime | Re-injected on navigation | Stays injected, but `window` properties are destroyed | Varies | Do not keep state on `window`. Re-initialise cleanly on every page lifecycle event. |
 | Packaging | ZIP / CRX | XPI, signed by Mozilla | Must be wrapped in a macOS app with `xcrun safari-web-extension-packager` (formerly `safari-web-extension-converter`), needs Xcode | Add a Safari build script. Note it needs a Mac. |
 
-Minimum versions: Chromium 148 (for the native `browser.*` namespace, see above), Firefox 128 (current ESR line or newer), Safari 18.4. Confirm these against the latest compat data when you start, and tell me if anything has moved.
+Verified on 2026-10-11 against `@mdn/browser-compat-data` 8.1.5 and Mozilla's release data: every version number in the table above matches. Re-run this check at the start of Release 2 (Firefox) and Release 4 (Safari).
+
+Minimum versions: Chromium 148 (for the native `browser.*` namespace, see above), Firefox 140 (oldest supported ESR line on 2026-10-11; ESR 128 is end-of-life), Safari 18.4. Confirm these against the latest compat data when you start, and tell me if anything has moved.
 
 ### Platform abstraction
 
