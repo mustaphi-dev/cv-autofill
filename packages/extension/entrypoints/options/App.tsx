@@ -1,59 +1,11 @@
-import { Profile, type Issue } from "@cv-autofill/schema";
+import { Profile } from "@cv-autofill/schema";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { send } from "../../lib/send";
+import { Editor } from "./Editor";
+import { SECTION_LABELS } from "./fields";
+import { describeIssue } from "./issues";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-const SECTION_LABELS: Record<string, string> = {
-  personal: "Personal details",
-  summary: "Summary",
-  links: "Links",
-  work: "Work experience",
-  projects: "Projects",
-  education: "Education",
-  publications: "Publications",
-  certifications: "Certifications",
-  skills: "Skills",
-  languages: "Languages",
-  awards: "Awards",
-  volunteering: "Volunteering",
-  courses: "Courses",
-  memberships: "Memberships",
-  talks: "Talks",
-  patents: "Patents",
-  references: "References",
-};
-
-// "fieldOfStudy" -> "field of study"
-const words = (key: string) =>
-  key.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`);
-
-// Describes where and why an import failed. Never includes the value itself.
-function describeIssue(issue: Issue): string {
-  const [section, ...rest] = issue.path;
-  // Profile-wide checks (unknown top-level keys, duplicate ids) have no path.
-  const where =
-    section === undefined
-      ? "Profile"
-      : [
-          SECTION_LABELS[String(section)] ?? words(String(section)),
-          ...rest.map((p) =>
-            typeof p === "number" ? `entry ${String(p + 1)}` : words(String(p)),
-          ),
-        ].join(", ");
-  switch (issue.code) {
-    case "too_big":
-      return `${where}: too long (max ${String(issue.maximum)})`;
-    case "invalid_format":
-      return `${where}: not a valid ${issue.format === "regex" ? "value" : issue.format}`;
-    case "unrecognized_keys":
-      return `${where}: unknown field ${issue.keys.map((k) => `"${k}"`).join(", ")}`;
-    case "invalid_type":
-      return `${where}: missing or wrong type`;
-    default:
-      return `${where}: ${issue.message}`;
-  }
-}
 
 function summarise(profile: Profile): string {
   const name = [profile.personal?.firstName, profile.personal?.lastName]
@@ -76,6 +28,9 @@ export function App() {
     null,
   );
   const [pending, setPending] = useState<Profile | null>(null);
+  // Bumped whenever the saved profile is replaced, so the editor starts over.
+  const [version, setVersion] = useState(0);
+  const [editorDirty, setEditorDirty] = useState(false);
   const replaceDialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
 
@@ -108,15 +63,17 @@ export function App() {
     run(load);
   }, []);
 
-  async function save(next: Profile) {
+  async function save(next: Profile, done: string): Promise<boolean> {
     const reply = await send({ type: "profile.save", profile: next });
     if (!reply.ok) {
       fail("Saving failed. Your previous profile is unchanged.");
-      return;
+      return false;
     }
     setProfile(next);
+    setVersion((v) => v + 1);
     setAlert(null);
-    setStatus("Profile imported.");
+    setStatus(done);
+    return true;
   }
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
@@ -152,18 +109,19 @@ export function App() {
       return;
     }
     // Ask unless we know nothing is stored: undefined means the load is
-    // pending or failed, and a stored profile may still exist.
-    if (profile !== null) {
+    // pending or failed, and a stored profile may still exist. Also ask when
+    // the import would throw away unsaved edits in the form.
+    if (profile !== null || editorDirty) {
       setPending(parsed.data);
       replaceDialog.current?.showModal();
       return;
     }
-    await save(parsed.data);
+    await save(parsed.data, "Profile imported.");
   }
 
   async function confirmReplace() {
     replaceDialog.current?.close();
-    if (pending) await save(pending);
+    if (pending) await save(pending, "Profile imported.");
     setPending(null);
   }
 
@@ -189,6 +147,7 @@ export function App() {
       return;
     }
     setProfile(null);
+    setVersion((v) => v + 1);
     setAlert(null);
     setStatus("All your data was deleted.");
   }
@@ -205,7 +164,7 @@ export function App() {
               ? "Loading…"
               : "Your saved profile could not be loaded."
             : profile === null
-              ? "No profile yet. Import a JSON file to start."
+              ? "No profile yet. Import a JSON file, or fill in the form below."
               : summarise(profile)}
         </p>
         <label>
@@ -237,6 +196,20 @@ export function App() {
         </div>
       )}
 
+      {profile !== undefined && (
+        <Editor
+          key={version}
+          saved={profile}
+          onDirtyChange={setEditorDirty}
+          onSave={(next) =>
+            save(next, "Changes saved.").catch(() => {
+              fail("Saving failed. Your previous profile is unchanged.");
+              return false;
+            })
+          }
+        />
+      )}
+
       <section aria-labelledby="danger-heading">
         <h2 id="danger-heading">Delete all data</h2>
         <p className="muted">
@@ -254,8 +227,9 @@ export function App() {
       <dialog ref={replaceDialog} aria-labelledby="replace-title">
         <h2 id="replace-title">Replace your profile?</h2>
         <p>
-          The imported file will replace your current profile. Export it first
-          if you want a copy.
+          {profile !== null &&
+            "The imported file will replace your current profile. Export it first if you want a copy. "}
+          {editorDirty && "Your unsaved changes in the form will be lost."}
         </p>
         <button
           type="button"

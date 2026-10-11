@@ -152,6 +152,21 @@ test("asks before replacing an existing profile", async () => {
   });
 });
 
+test("asks before an import discards unsaved form edits", async () => {
+  const { user } = await setup();
+  await user.type(screen.getByLabelText("First name"), "Grace");
+
+  await importFile(user, jsonFile(v1));
+  const dialog = screen.getByRole("dialog", { name: "Replace your profile?" });
+  expect(dialog.hasAttribute("open")).toBe(true);
+  expect(dialog.textContent).toContain("unsaved changes");
+  await user.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(stored).toBeNull();
+  expect(screen.getByLabelText<HTMLInputElement>("First name").value).toBe(
+    "Grace",
+  );
+});
+
 test("exports the profile as a JSON download", async () => {
   stored = v1;
   const click = vi

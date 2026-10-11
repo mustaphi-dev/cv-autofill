@@ -68,3 +68,59 @@ dialog {
   border-radius: 8px;
   max-width: 28rem;
 }
+details {
+  border-top: 1px solid var(--border);
+  padding: 0.5rem 0;
+}
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.75rem 0;
+  border: 0;
+  padding: 0;
+}
+input:not([type="checkbox"]):not([type="file"]),
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+}
+[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.field-error {
+  color: var(--danger);
+  margin: 0;
+}
+.entries {
+  padding-left: 1.25rem;
+}
+.entries fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0.75rem 0;
+}
+.handle {
+  cursor: grab;
+}
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+.form-lock {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
