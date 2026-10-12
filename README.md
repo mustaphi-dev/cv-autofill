@@ -27,9 +27,10 @@ pnpm typecheck     # tsc in every package
 pnpm test          # Vitest in every package, with coverage
 ```
 
-Backend, from `backend/`:
+Backend, from `backend/` (the tests need the local Postgres and Valkey from Docker Compose):
 
 ```sh
+docker compose up -d --wait
 uv run ruff check && uv run ruff format --check
 uv run mypy
 uv run pytest
@@ -55,7 +56,11 @@ or in Docker (Docker must be running):
 
 ```sh
 docker build -t cv-autofill-backend .
-docker run --rm -p 8000:8000 cv-autofill-backend
+# host.docker.internal reaches the Compose services from inside the container
+docker run --rm -p 8000:8000 \
+  -e DATABASE_URL=postgresql://cv:cv@host.docker.internal:5433/cv \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  cv-autofill-backend
 ```
 
-Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. Logs are one JSON object per line and never include request bodies, query strings or real paths.
+Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. `curl localhost:8000/readyz` also checks Postgres and Valkey (start them with `docker compose up -d --wait`; Postgres is on port 5433 so it never clashes with one already installed). Settings come from `DATABASE_URL` and `REDIS_URL`, which default to the Compose services locally and must be set on Render. Logs are one JSON object per line and never include request bodies, query strings or real paths.

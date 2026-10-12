@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from app import logs
+from app import deps, logs
 
 logs.setup()
 log = logging.getLogger("app")
@@ -50,3 +50,13 @@ async def log_request(
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# For the uptime monitor. Render's health check uses /healthz: failing this
+# would restart instances over a database blip, which a restart cannot fix.
+@app.get("/readyz")
+def readyz(response: Response) -> dict[str, str]:
+    checks = {"database": deps.database_ok(), "redis": deps.redis_ok()}
+    if not all(checks.values()):
+        response.status_code = 503
+    return {name: "ok" if ok else "down" for name, ok in checks.items()}

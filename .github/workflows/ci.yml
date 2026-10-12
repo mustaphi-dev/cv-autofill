@@ -37,6 +37,7 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run mypy
+      - run: docker compose up -d --wait
       - run: uv run pytest
       - run: docker build -t cv-autofill-backend .
 
