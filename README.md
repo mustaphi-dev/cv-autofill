@@ -43,4 +43,19 @@ pnpm --filter @cv-autofill/extension build
 
 Open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and choose `packages/extension/build/chrome-mv3`.
 
-Running the backend is documented here once it exists (M3).
+## Run the backend
+
+From `backend/`, either directly:
+
+```sh
+uv run uvicorn app.main:app --reload
+```
+
+or in Docker (Docker must be running):
+
+```sh
+docker build -t cv-autofill-backend .
+docker run --rm -p 8000:8000 cv-autofill-backend
+```
+
+Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. Logs are one JSON object per line and never include request bodies, query strings or real paths.
