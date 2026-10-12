@@ -145,7 +145,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 
 ## M5. Core engine
 
-**Features:** platform identification; form model builder; dictionary (`packages/vocab`) with priority coverage and exclude patterns; matcher with section-plus-field context and confidence threshold; fill plan; filling strategies (native setter, select, checkbox and radio, file upload via chunked transfer, rich text via paste and `beforeinput`); layered verification; repeating block add and remove in profile order, with form limits; repair mode with preview and confirmation; dropdown matching; constraints and description variants; undo; stop; pause on user typing; submit deny-list; session store (Q12); panel Fill tab checklist; floating Fill button for when the panel is closed (Q1, Q14); shared text normalisation and scrubbing cases.
+**Features:** platform identification; form model builder; dictionary (`packages/vocab`) with priority coverage and exclude patterns; matcher with section-plus-field context and confidence threshold; fill plan; filling strategies (native setter, select, checkbox and radio, file upload via chunked transfer, rich text via paste and `beforeinput`); layered verification; repeating block add and remove in profile order, with form limits; repair mode with preview and confirmation; dropdown matching; constraints and description variants; list rendering (bullets and short lists); fill highlight and typing animation with a Fast fill setting; undo; stop; pause on user typing; submit deny-list; session store (Q12); panel Fill tab checklist; floating Fill button for when the panel is closed (Q1, Q14); shared text normalisation and scrubbing cases.
 
 **ADRs:** mapping confidence thresholds; MAIN-world strategies (only those proven necessary); storage layout.
 
@@ -167,6 +167,9 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - Floating button: appears only during an active session with the panel closed. Disappears when the panel opens or the session ends. Ignores synthetic clicks from page script. Leaves no styling on the page. Works by keyboard and has an accessible name.
 - With the multi-step wizard fixture, filling step 1 from the panel, closing the panel, moving to step 2 and clicking the floating button fills step 2 only, with no duplicates.
 - Shared text normalisation and scrubbing cases pass in TypeScript (the Python side joins in M10).
+- Description bullets come out as `•` lines in a plain textarea and as a real list in a rich text editor, verified by reading back the rendered content.
+- Short lists (modules, technologies) come out comma-separated in text fields and as separate items in tag or multi-select fields.
+- The fill animation never changes what is written: the same fixture verifies identically with animation on and off. Reduced motion and Fast fill turn it off. The highlight causes no layout shift and leaves no styling on the page.
 
 ## M6. Fixture pages and Chromium end-to-end harness
 

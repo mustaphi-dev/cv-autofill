@@ -209,6 +209,7 @@ Base its section layout on the JSON Resume schema, but not its exact format: dat
 - Each entry has a stable `id`. Its position in its section's array is its order, which I control (decided 2026-10-11: no separate `order` field, so two entries can never claim the same place).
 - Dates stored as `{year, month}` with `month` optional, plus `current: boolean`. Never formatted strings.
 - Descriptions stored as structured bullets (array of strings) plus optional variants (short, long). The engine renders them per target: newline-separated `•` lines for plain textareas, real list markup for rich text editors.
+- Short lists (relevant modules, technologies, authors, aliases) are stored as arrays of items, never as one comma-joined string, whatever separator the CV used. The engine renders them per target (decided 2026-10-12): comma-separated text ("A, B, C") for plain inputs, textareas and rich text editors; each item added separately for tag and multi-select fields.
 - Optional aliases per entry (school name variants, company former names) to help dropdown matching.
 - A `schemaVersion` field and tested migrations between versions.
 - Files in IndexedDB. Profile in extension local storage.
@@ -256,6 +257,7 @@ Global rules:
 - Locale: detect the page language. The v1 dictionary is English. Non-English forms are filled only by adapters and otherwise flagged. Date formats are detected per field, never assumed from the locale.
 - Waits use observable conditions (MutationObserver, value stability), never bare `setTimeout` guesses. Every wait has a timeout and a clear failure message.
 - Performance budget: building the form model on a typical page under 100 ms. Measure and report it.
+- Visual feedback (decided 2026-10-12): the field being filled gets an accent outline drawn as an overlay (no layout shift on the page), then a brief green flash when verified or amber when it needs the user. Short plain-text fields (name, company, title, city) get a typewriter effect capped at about 300 ms per field; descriptions, dropdowns, dates and uploads appear in one go with a fade-in. The animation is visual only: the value is written with the normal strategy and verified as usual, and individual keystrokes are never sent to the page for the effect. `prefers-reduced-motion` and a "Fast fill" setting turn all animation off.
 
 ## 7. Vocabulary and matching
 
