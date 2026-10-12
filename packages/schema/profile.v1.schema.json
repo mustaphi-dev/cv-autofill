@@ -124,7 +124,7 @@
           "url": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           }
         },
         "required": [
@@ -341,12 +341,12 @@
           "url": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           },
           "repositoryUrl": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           },
           "technologies": {
             "maxItems": 50,
@@ -596,7 +596,7 @@
           "url": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           },
           "status": {
             "type": "string",
@@ -682,7 +682,7 @@
           "url": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           }
         },
         "required": [
@@ -1097,7 +1097,7 @@
           "url": {
             "type": "string",
             "maxLength": 2048,
-            "pattern": "^https?:\\/\\/"
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/"
           }
         },
         "required": [

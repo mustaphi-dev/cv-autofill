@@ -1,0 +1,180 @@
+[
+  {
+    "name": "minimal profile",
+    "valid": true,
+    "profile": { "schemaVersion": 1 }
+  },
+  {
+    "name": "upper-case link scheme",
+    "valid": true,
+    "profile": {
+      "schemaVersion": 1,
+      "links": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000001",
+          "kind": "website",
+          "url": "HTTPS://Example.com"
+        }
+      ]
+    }
+  },
+  {
+    "name": "text with spaces around it, at the length limit once trimmed",
+    "valid": true,
+    "profile": {
+      "schemaVersion": 1,
+      "work": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000002",
+          "company": "   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa   ",
+          "bullets": ["  Led the rewrite  "]
+        }
+      ]
+    }
+  },
+  {
+    "name": "dates in the same year without months",
+    "valid": true,
+    "profile": {
+      "schemaVersion": 1,
+      "education": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000003",
+          "start": { "year": 2020, "month": 9 },
+          "end": { "year": 2020 }
+        }
+      ]
+    }
+  },
+  {
+    "name": "blank text",
+    "valid": false,
+    "profile": {
+      "schemaVersion": 1,
+      "work": [
+        { "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000004", "company": "   " }
+      ]
+    }
+  },
+  {
+    "name": "null instead of leaving the field out",
+    "valid": false,
+    "profile": {
+      "schemaVersion": 1,
+      "work": [
+        { "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000005", "company": null }
+      ]
+    }
+  },
+  {
+    "name": "number written as text",
+    "valid": false,
+    "profile": {
+      "schemaVersion": 1,
+      "skills": [{ "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000006", "years": "5" }]
+    }
+  },
+  {
+    "name": "a project in the work section",
+    "valid": false,
+    "profile": {
+      "schemaVersion": 1,
+      "work": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000007",
+          "name": "Difference Engine",
+          "repositoryUrl": "https://github.com/ada/engine"
+        }
+      ]
+    }
+  },
+  {
+    "name": "link that is not http(s)",
+    "valid": false,
+    "profile": {
+      "schemaVersion": 1,
+      "links": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000008",
+          "kind": "website",
+          "url": "javascript:alert(1)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "id that is not a UUID",
+    "valid": false,
+    "profile": { "schemaVersion": 1, "work": [{ "id": "job-1" }] }
+  },
+  {
+    "name": "current entry with an end date",
+    "valid": false,
+    "rule": "A current entry cannot have an end date",
+    "profile": {
+      "schemaVersion": 1,
+      "work": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000009",
+          "current": true,
+          "end": { "year": 2024 }
+        }
+      ]
+    }
+  },
+  {
+    "name": "end before start",
+    "valid": false,
+    "rule": "End date is before start date",
+    "profile": {
+      "schemaVersion": 1,
+      "projects": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000010",
+          "start": { "year": 2022, "month": 5 },
+          "end": { "year": 2022, "month": 4 }
+        }
+      ]
+    }
+  },
+  {
+    "name": "expiry before issue",
+    "valid": false,
+    "rule": "Expiry date is before issue date",
+    "profile": {
+      "schemaVersion": 1,
+      "certifications": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000011",
+          "issueDate": { "year": 2023 },
+          "expiryDate": { "year": 2022 }
+        }
+      ]
+    }
+  },
+  {
+    "name": "other link without a label",
+    "valid": false,
+    "rule": "A link of kind 'other' needs a label",
+    "profile": {
+      "schemaVersion": 1,
+      "links": [
+        {
+          "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000012",
+          "kind": "other",
+          "url": "https://example.com"
+        }
+      ]
+    }
+  },
+  {
+    "name": "two entries with the same id",
+    "valid": false,
+    "rule": "Two entries share the same id",
+    "profile": {
+      "schemaVersion": 1,
+      "work": [{ "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000013" }],
+      "projects": [{ "id": "6f1c2a3e-1b2c-4d5e-8f90-000000000013" }]
+    }
+  }
+]

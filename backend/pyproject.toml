@@ -12,6 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "datamodel-code-generator==0.83.0",
     "httpx2>=2.13.1",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
@@ -26,6 +27,9 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "BLE", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+# Generated. Pydantic copies `= []` defaults per instance, so RUF012 is a false
+# alarm, and the generator's line lengths are not ours to fix.
+"app/profile_v1.py" = ["RUF012", "E501"]
 
 [tool.mypy]
 strict = true
@@ -33,3 +37,25 @@ files = ["app", "tests"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+# `uv run datamodel-codegen` regenerates app/profile_v1.py. CI fails if the
+# committed file differs.
+[tool.datamodel-codegen]
+input = "../packages/schema/profile.v1.schema.json"
+input-file-type = "jsonschema"
+output = "app/profile_v1.py"
+output-model-type = "pydantic_v2.BaseModel"
+base-class = "app.profile_base.Base"
+class-name = "ProfileV1"
+target-python-version = "3.14"
+use-annotated = true
+field-constraints = true
+use-standard-collections = true
+use-union-operator = true
+# Zod's own email and id patterns are in the schema; Pydantic's types differ.
+type-mappings = ["email=string", "uuid=string"]
+enum-field-as-literal = "all"
+use-type-alias = true
+disable-timestamp = true
+formatters = ["ruff-format", "ruff-check"]
+custom-file-header = "# Generated from packages/schema/profile.v1.schema.json. Do not edit:\n# run `uv run datamodel-codegen` instead."

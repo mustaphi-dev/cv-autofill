@@ -36,6 +36,8 @@ uv run mypy
 uv run pytest
 ```
 
+The backend's profile models (`backend/app/profile_v1.py`) are generated from `packages/schema/profile.v1.schema.json`. After changing the schema, run `uv run datamodel-codegen` in `backend/`; CI fails if they differ. Validation rules JSON Schema cannot express live in `backend/app/profile.py`, and `packages/schema/fixtures/cases.json` is run by both the Zod and the Python tests so the two sides agree.
+
 ## Load the extension in Chrome (or another Chromium browser, version 148+)
 
 ```sh

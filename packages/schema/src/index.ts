@@ -20,11 +20,22 @@ const MAX_TAGS = 50;
 
 // Rules are written as regexes so the exported JSON Schema (used by the
 // backend) carries them too: text is not blank, links are http(s) only.
+// No regex flags: JSON Schema drops them, so the backend would disagree.
 const text = (max = NAME) => z.string().trim().max(max).regex(/\S/);
 const url = z
   .url()
   .max(URL_MAX)
-  .regex(/^https?:\/\//i);
+  .regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
+// Rules JSON Schema cannot carry. The backend mirrors each one in Python, and
+// every rule needs a case in fixtures/cases.json (checked by cases.test.ts).
+export const RULES = {
+  currentHasNoEnd: "A current entry cannot have an end date",
+  endAfterStart: "End date is before start date",
+  otherLinkLabel: "A link of kind 'other' needs a label",
+  expiryAfterIssue: "Expiry date is before issue date",
+  uniqueIds: "Two entries share the same id",
+} as const;
+
 const tags = z.array(text()).max(MAX_TAGS);
 const bullets = z.array(text(BULLET)).max(MAX_BULLETS);
 const id = z.uuid();
@@ -64,11 +75,11 @@ type Span = {
 function withSpan<T extends z.ZodType<Span>>(schema: T): T {
   return schema
     .refine((e) => !(e.current === true && e.end), {
-      error: "A current entry cannot have an end date",
+      error: RULES.currentHasNoEnd,
       path: ["end"],
     })
     .refine((e) => !e.start || !e.end || notBefore(e.end, e.start), {
-      error: "End date is before start date",
+      error: RULES.endAfterStart,
       path: ["end"],
     });
 }
@@ -112,7 +123,7 @@ export const Link = z
     url,
   })
   .refine((l) => l.kind !== "other" || l.label, {
-    error: "A link of kind 'other' needs a label",
+    error: RULES.otherLinkLabel,
     path: ["label"],
   });
 
@@ -188,7 +199,7 @@ export const Certification = z
   .refine(
     (c) =>
       !c.issueDate || !c.expiryDate || notBefore(c.expiryDate, c.issueDate),
-    { error: "Expiry date is before issue date", path: ["expiryDate"] },
+    { error: RULES.expiryAfterIssue, path: ["expiryDate"] },
   );
 
 export const Skill = z.strictObject({
@@ -297,7 +308,7 @@ export const Profile = z
       );
       return new Set(ids).size === ids.length;
     },
-    { error: "Two entries share the same id" },
+    { error: RULES.uniqueIds },
   );
 export type Profile = z.infer<typeof Profile>;
 
