@@ -123,6 +123,7 @@ Cross-cutting criteria for every milestone: lint, type-check and tests pass in C
 - The review screen highlights the spec's listed parser mistakes. The user can move, merge, split, edit and delete entries. Nothing is saved before Confirm (verified by test).
 - Delete-all also clears the stored CV file in IndexedDB (moved from M2, where no files existed yet).
 - Declining consent never sends the file (verified by a network assertion in test).
+- Before upload, the options page says "Already set up in another browser? Export your profile there and import the JSON here", so a second browser or profile needs no parse (each one is a separate install with its own key and quota).
 - Generated Pydantic models match the committed JSON Schema (CI fails on drift), and the parse endpoint's output passes the extension's Zod schema.
 - Deployed to Render in Frankfurt (web service, PostgreSQL and Key Value). Health checks and the uptime alert work.
 - The configured LLM providers (primary and failover) process data only in the EU, confirmed from their DPAs in the provider ADR.
