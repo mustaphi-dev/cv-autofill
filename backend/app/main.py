@@ -3,15 +3,30 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 
+import redis
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
-from app import deps, installs, logs
+from app import deps, installs, logs, quota
 
 logs.setup()
 log = logging.getLogger("app")
 app = FastAPI(title="CV Autofill API")
 app.include_router(installs.router)
+app.include_router(quota.router)
+
+
+# Limits and quotas live in Valkey. Without them, paid parsing would run
+# unbounded, so refuse rather than let requests through. Filling never needs
+# the backend, so users lose little.
+@app.exception_handler(redis.RedisError)
+def valkey_down(request: Request, exc: redis.RedisError) -> Response:
+    log.warning("valkey unavailable", exc_info=exc)
+    return JSONResponse(
+        {"detail": "Temporarily unavailable. Try again shortly."},
+        503,
+        {"Retry-After": "60"},
+    )
 
 
 @app.middleware("http")

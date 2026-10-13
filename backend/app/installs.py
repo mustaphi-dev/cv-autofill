@@ -17,6 +17,8 @@ from app.models import Install
 # rotate. Both are counted in Valkey and expire with the hour.
 PER_IP_PER_HOUR = 5
 ALL_PER_HOUR = 300
+# Every keyed request counts: stops one install hammering the API in a loop.
+PER_INSTALL_PER_MINUTE = 60
 # Required on Render: unset, every client would look like the proxy and share
 # one per-IP counter.
 TRUSTED_PROXY_HOPS = int(setting("TRUSTED_PROXY_HOPS", "0"))
@@ -59,7 +61,16 @@ def current_install(
         raise HTTPException(
             401, "Missing or invalid install key", {"WWW-Authenticate": "Bearer"}
         )
+    limits.hit(
+        f"rate:{install.id}",
+        PER_INSTALL_PER_MINUTE,
+        60,
+        "Too many requests. Try again shortly.",
+    )
     return install
+
+
+CurrentInstall = Annotated[Install, Depends(current_install)]
 
 
 class Issued(BaseModel):
@@ -82,13 +93,7 @@ def create(request: Request, session: DbSession) -> Issued:
         (f"installs:ip:{ip}", PER_IP_PER_HOUR),
         ("installs:all", ALL_PER_HOUR),
     ):
-        wait = limits.hit(counter, limit, 3600)
-        if wait is not None:
-            raise HTTPException(
-                429,
-                "Too many new installs. Try again later.",
-                {"Retry-After": str(wait)},
-            )
+        limits.hit(counter, limit, 3600, "Too many new installs. Try again later.")
     install = Install(id=uuid.uuid4())
     issued = issue_key(install)
     session.add(install)
@@ -97,9 +102,7 @@ def create(request: Request, session: DbSession) -> Issued:
 
 
 @router.post("/rotate")
-def rotate(
-    install: Annotated[Install, Depends(current_install)], session: DbSession
-) -> Issued:
+def rotate(install: CurrentInstall, session: DbSession) -> Issued:
     """A new key for this install. The old one stops working at once."""
     issued = issue_key(install)
     session.commit()
