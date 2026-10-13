@@ -1,9 +1,11 @@
 import logging
 import os
+from collections.abc import Iterator
 
 import redis
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +34,11 @@ cache = redis.Redis.from_url(
     socket_connect_timeout=2,
     socket_timeout=2,
 )
+
+
+def get_session() -> Iterator[Session]:
+    with Session(engine) as session:
+        yield session
 
 
 def database_ok() -> bool:

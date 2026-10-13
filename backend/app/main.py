@@ -6,11 +6,12 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from app import deps, logs
+from app import deps, installs, logs
 
 logs.setup()
 log = logging.getLogger("app")
 app = FastAPI(title="CV Autofill API")
+app.include_router(installs.router)
 
 
 @app.middleware("http")

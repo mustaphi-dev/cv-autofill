@@ -65,4 +65,8 @@ docker run --rm -p 8000:8000 \
   cv-autofill-backend
 ```
 
-Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. `curl localhost:8000/readyz` also checks Postgres and Valkey (start them with `docker compose up -d --wait`; Postgres is on port 5433 so it never clashes with one already installed). Settings come from `DATABASE_URL` and `REDIS_URL`, which default to the Compose services locally and must be set on Render. Logs are one JSON object per line and never include request bodies, query strings or real paths.
+Apply database migrations first with `uv run alembic upgrade head` (in Docker: `docker run … cv-autofill-backend alembic upgrade head`). A new migration starts with `uv run alembic revision -m "…"`; CI fails if the models and migrations disagree. The tests empty and drop tables, so they refuse to run unless the database and Valkey are on localhost.
+
+Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. `curl localhost:8000/readyz` also checks Postgres and Valkey (start them with `docker compose up -d --wait`; Postgres is on port 5433 so it never clashes with one already installed). Settings come from `DATABASE_URL` and `REDIS_URL`, which default to the Compose services locally and must be set on Render, and `TRUSTED_PROXY_HOPS`, the number of proxies that append to `X-Forwarded-For` (0 locally; must be set on Render, where it is 1). Logs are one JSON object per line and never include request bodies, query strings or real paths.
+
+To revoke an install's key (for example a leaked one), run `python -m app.admin revoke <install_id>` on the server, or `uv run python -m app.admin revoke <install_id>` locally.
