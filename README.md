@@ -38,6 +38,8 @@ uv run pytest
 
 The backend's profile models (`backend/app/profile_v1.py`) are generated from `packages/schema/profile.v1.schema.json`. After changing the schema, run `uv run datamodel-codegen` in `backend/`; CI fails if they differ. Validation rules JSON Schema cannot express live in `backend/app/profile.py`, and `packages/schema/fixtures/cases.json` is run by both the Zod and the Python tests so the two sides agree.
 
+The CV text extraction tests build their own made-up CVs. To check real ones, put them in `backend/local-cvs/` (git-ignored, never commit a real CV) and run `uv run python -c "from app.extract import extract; print(extract(open('local-cvs/your_cv.pdf', 'rb').read()))"` from `backend/`. The memory-limit test only runs on Linux, as in CI.
+
 ## Load the extension in Chrome (or another Chromium browser, version 148+)
 
 ```sh

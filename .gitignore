@@ -11,3 +11,6 @@ __pycache__/
 build/
 .wxt/
 *.swp
+
+# Real CVs for local checks only. Never commit.
+backend/local-cvs/

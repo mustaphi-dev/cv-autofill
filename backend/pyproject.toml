@@ -5,7 +5,9 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.20.0",
     "fastapi>=0.143.0",
+    "pdfplumber>=0.11.10",
     "psycopg[binary]>=3.3.6",
+    "python-docx>=1.2.0",
     "redis>=8.1.0",
     "sqlalchemy>=2.1.4",
     "uvicorn>=0.54.0",
@@ -17,6 +19,7 @@ dev = [
     "httpx2>=2.13.1",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
+    "reportlab>=5.0.1",
     "ruff>=0.17.0",
 ]
 
@@ -27,7 +30,8 @@ package = false
 select = ["E", "F", "W", "I", "B", "UP", "S", "BLE", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Tests use real CV punctuation, such as en dashes in date ranges.
+"tests/**" = ["S101", "RUF001"]
 # Generated. Pydantic copies `= []` defaults per instance, so RUF012 is a false
 # alarm, and the generator's line lengths are not ours to fix.
 "app/profile_v1.py" = ["RUF012", "E501"]
@@ -35,6 +39,11 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "BLE", "RUF"]
 [tool.mypy]
 strict = true
 files = ["app", "tests"]
+
+[[tool.mypy.overrides]]
+# Test-only PDF builder without type hints.
+module = ["reportlab.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
