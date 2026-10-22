@@ -56,6 +56,8 @@ From `backend/`, either directly:
 uv run uvicorn app.main:app --reload
 ```
 
+Secrets such as the LLM provider key go in `backend/.env` (git-ignored, never baked into the Docker image; run `chmod 600 .env`). Nothing reads it automatically: add `--env-file .env` to load it, as in `uv run --env-file .env uvicorn app.main:app --reload`. The tests never load it and never call a real provider. On Render, set the same names as secret environment variables.
+
 or in Docker (Docker must be running):
 
 ```sh
@@ -70,5 +72,7 @@ docker run --rm -p 8000:8000 \
 Apply database migrations first with `uv run alembic upgrade head` (in Docker: `docker run … cv-autofill-backend alembic upgrade head`). A new migration starts with `uv run alembic revision -m "…"`; CI fails if the models and migrations disagree. The tests empty and drop tables, so they refuse to run unless the database and Valkey are on localhost.
 
 Then `curl localhost:8000/healthz` returns `{"status":"ok"}`. `curl localhost:8000/readyz` also checks Postgres and Valkey (start them with `docker compose up -d --wait`; Postgres is on port 5433 so it never clashes with one already installed). Settings come from `DATABASE_URL` and `REDIS_URL`, which default to the Compose services locally and must be set on Render, and `TRUSTED_PROXY_HOPS`, the number of proxies that append to `X-Forwarded-For` (0 locally; must be set on Render, where it is 1). Logs are one JSON object per line and never include request bodies, query strings or real paths.
+
+CV parsing (`POST /v1/parse`, the raw PDF or DOCX file as the request body) calls an OpenAI-compatible LLM provider set by `LLM_URL` (base URL ending in `/v1`; for Scaleway `https://api.scaleway.ai/<project_id>/v1`), `LLM_KEY` and `LLM_MODEL`, required on Render. An optional backup provider uses `LLM_FAILOVER_URL`, `LLM_FAILOVER_KEY` and `LLM_FAILOVER_MODEL`. Without `LLM_URL`, parsing answers "unavailable" and the rest of the backend works. If a live parse logs `"reason": "SSLCertVerificationError"` on macOS, your Python (from the python.org installer) has no certificates yet: run `/Applications/Python\ 3.14/Install\ Certificates.command`, or add `SSL_CERT_FILE=/etc/ssl/cert.pem` to the command. The Docker image is not affected.
 
 To revoke an install's key (for example a leaked one), run `python -m app.admin revoke <install_id>` on the server, or `uv run python -m app.admin revoke <install_id>` locally.

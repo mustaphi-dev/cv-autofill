@@ -7,13 +7,14 @@ import redis
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from app import deps, installs, logs, quota
+from app import deps, installs, logs, parse, quota
 
 logs.setup()
 log = logging.getLogger("app")
 app = FastAPI(title="CV Autofill API")
 app.include_router(installs.router)
 app.include_router(quota.router)
+app.include_router(parse.router)
 
 
 # Limits and quotas live in Valkey. Without them, paid parsing would run
