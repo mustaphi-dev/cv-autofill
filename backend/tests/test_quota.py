@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -27,6 +28,7 @@ def test_status_shows_a_full_quota_for_a_new_install() -> None:
     # UTC midnight, in a form the extension can turn into local time.
     midnight = quota.midnight(datetime.now(UTC))
     assert body["resets_at"] == midnight.strftime("%Y-%m-%dT00:00:00Z")
+    assert body["parsing_available"] is True
 
 
 def test_status_needs_a_key() -> None:
@@ -56,6 +58,27 @@ def test_refuses_a_parse_over_the_daily_quota_until_midnight_utc() -> None:
     assert client.get("/v1/status", headers=auth).json()["parses_left"] == 0
     quota.refund_parse(quota.counter(install_id, now))
     assert client.get("/v1/status", headers=auth).json()["parses_left"] == 1
+
+
+def test_spend_alerts_fire_once_each_as_the_total_crosses_them(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def alerts() -> list[tuple[int, int]]:
+        return [(r.percent, r.levelno) for r in caplog.records]  # type: ignore[attr-defined]
+
+    percent = quota.SPEND_CAP // 100
+    quota.add_spend(49 * percent)
+    assert alerts() == []
+    quota.add_spend(1 * percent)  # Exactly at 50%.
+    assert alerts() == [(50, logging.WARNING)]
+    quota.add_spend(40 * percent)  # Jumps past 80% only.
+    quota.add_spend(5 * percent)
+    quota.add_spend(10 * percent)
+    assert alerts() == [
+        (50, logging.WARNING),
+        (80, logging.ERROR),
+        (100, logging.ERROR),
+    ]
 
 
 def test_rate_limits_each_install(monkeypatch: pytest.MonkeyPatch) -> None:

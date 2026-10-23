@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,8 +24,8 @@ from app.parse import Provider
 pytestmark = pytest.mark.usefixtures("clean")
 client = TestClient(app)
 
-PRIMARY = Provider("primary", "https://primary.test/v1", "key-1", "model-1")
-FAILOVER = Provider("failover", "https://failover.test/v1", "key-2", "model-2")
+PRIMARY = Provider("primary", "https://primary.test/v1", "key-1", "model-1", 1, 2)
+FAILOVER = Provider("failover", "https://failover.test/v1", "key-2", "model-2", 3, 4)
 FIXTURE = Path(__file__).parents[2] / "packages/schema/fixtures/profile.v1.json"
 
 # What a model sends back: nulls for what the CV does not say, no ids.
@@ -164,12 +165,18 @@ def test_both_down_says_so_and_gives_the_parse_back(
     assert parses_left(auth) == quota.PARSES_PER_DAY
 
 
+def spent() -> int:
+    return quota.spent(datetime.now(UTC))
+
+
 def test_asks_again_once_with_the_problems_when_the_output_is_invalid(
     llm: Callable[..., Fake],
 ) -> None:
     ended_first = {"work": [{**REPLY["work"][0], "end": {"year": 2019}}]}
     fake = llm(primary=[answer(ended_first), answer(REPLY)])
     assert post(new_install()).status_code == 200
+    # Both calls are paid for: 100 tokens in at $1/M, 50 out at $2/M, twice.
+    assert spent() == 2 * (100 * 1 + 50 * 2)
     retry = fake.calls[1][2]["messages"]
     assert retry[-2]["role"] == "assistant"
     assert "work[0].end" in retry[-1]["content"]
@@ -183,6 +190,32 @@ def test_gives_up_after_two_invalid_answers(llm: Callable[..., Fake]) -> None:
     assert response.status_code == 502
     assert response.json()["detail"] == parse.FAILED
     assert len(fake.calls) == 2  # The failover is for outages, not bad answers.
+    assert parses_left(auth) == quota.PARSES_PER_DAY
+
+
+def test_without_usage_a_call_costs_the_most_it_could(
+    llm: Callable[..., Fake], caplog: pytest.LogCaptureFixture
+) -> None:
+    llm(primary=[{**answer(REPLY), "usage": None}])
+    assert post(new_install()).status_code == 200
+    assert spent() > parse.MAX_TOKENS * 2
+    assert "llm usage missing" in caplog.messages
+
+
+def test_pauses_at_the_daily_spend_cap_until_midnight_utc(
+    llm: Callable[..., Fake],
+) -> None:
+    fake = llm()
+    auth = new_install()
+    quota.add_spend(quota.SPEND_CAP)
+    assert client.get("/v1/status", headers=auth).json()["parsing_available"] is False
+    response = post(auth)
+    assert response.status_code == 503
+    assert response.json()["detail"] == parse.PAUSED
+    now = datetime.now(UTC)
+    wait = int(response.headers["Retry-After"])
+    assert abs(wait - (quota.midnight(now) - now).total_seconds()) < 5
+    assert not fake.calls
     assert parses_left(auth) == quota.PARSES_PER_DAY
 
 
@@ -228,16 +261,22 @@ def test_unavailable_when_no_provider_is_set_up(
     assert response.json()["detail"] == parse.UNAVAILABLE
 
 
-def test_a_provider_needs_its_key_and_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_provider_needs_its_key_model_and_prices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("LLM_URL", "https://primary.test/v1/")
     monkeypatch.setenv("LLM_KEY", "k")
     monkeypatch.setenv("LLM_MODEL", "m")
+    monkeypatch.setenv("LLM_INPUT_PRICE", "0.18")
+    monkeypatch.setenv("LLM_OUTPUT_PRICE", "0.7")
     monkeypatch.setenv("LLM_FAILOVER_URL", "https://failover.test/v1")
-    with pytest.raises(RuntimeError, match="LLM_FAILOVER_URL is set without"):
+    monkeypatch.setenv("LLM_FAILOVER_KEY", "k2")
+    monkeypatch.setenv("LLM_FAILOVER_MODEL", "m2")
+    with pytest.raises(RuntimeError, match="LLM_FAILOVER_URL needs"):
         parse.providers()
     monkeypatch.delenv("LLM_FAILOVER_URL")
     assert parse.providers() == [
-        Provider("primary", "https://primary.test/v1", "k", "m")
+        Provider("primary", "https://primary.test/v1", "k", "m", 0.18, 0.7)
     ]
 
 

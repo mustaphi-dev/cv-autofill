@@ -3,11 +3,13 @@ this request's memory only: never logged, stored or written to disk."""
 
 import json
 import logging
+import math
 import os
 import time
 import urllib.request
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -30,6 +32,10 @@ UNAVAILABLE = (
     "CV parsing isn't available right now. "
     "You can import a JSON profile or fill in your profile by hand."
 )
+PAUSED = (
+    "CV parsing has paused for today. "
+    "You can import a JSON profile or fill in your profile by hand."
+)
 FAILED = (
     "We couldn't turn this CV into a profile. "
     "You can import a JSON profile or fill in your profile by hand."
@@ -42,6 +48,8 @@ class Provider:
     url: str  # OpenAI-compatible base URL, ending in /v1
     key: str
     model: str
+    input_price: float  # dollars per million tokens
+    output_price: float
 
 
 def providers() -> list[Provider]:
@@ -53,11 +61,24 @@ def providers() -> list[Provider]:
         url = os.environ.get(f"{prefix}URL")
         if not url:
             continue
-        key = os.environ.get(f"{prefix}KEY")
-        model = os.environ.get(f"{prefix}MODEL")
-        if not key or not model:
-            raise RuntimeError(f"{prefix}URL is set without {prefix}KEY and MODEL")
-        found.append(Provider(name, url.rstrip("/"), key, model))
+        names = ("KEY", "MODEL", "INPUT_PRICE", "OUTPUT_PRICE")
+        key, model, input_price, output_price = (
+            os.environ.get(prefix + n) for n in names
+        )
+        if not key or not model or not input_price or not output_price:
+            raise RuntimeError(
+                f"{prefix}URL needs {', '.join(prefix + n for n in names)}"
+            )
+        found.append(
+            Provider(
+                name,
+                url.rstrip("/"),
+                key,
+                model,
+                float(input_price),
+                float(output_price),
+            )
+        )
     return found
 
 
@@ -257,6 +278,17 @@ def _complete(provider: Provider, messages: list[dict[str, str]]) -> str:
             },
         )
         raise Down from None
+    # Without usage, assume the worst: every character a token, a full reply.
+    prompt = usage.get("prompt_tokens")
+    completion = usage.get("completion_tokens")
+    if prompt is None or completion is None:
+        log.warning("llm usage missing", extra={"provider": provider.name})
+        prompt = sum(len(m["content"]) for m in messages)
+        completion = MAX_TOKENS
+    # Dollars per million tokens times tokens is micro-dollars.
+    quota.add_spend(
+        math.ceil(prompt * provider.input_price + completion * provider.output_price)
+    )
     log.info(
         "llm call",
         extra={
@@ -295,6 +327,10 @@ async def parse(request: Request, install: CurrentInstall) -> dict[str, Profile]
     """The CV file is the raw request body: PDF or DOCX, under 5 MB."""
     if not PROVIDERS:
         raise HTTPException(503, UNAVAILABLE)
+    now = datetime.now(UTC)
+    if quota.spent(now) >= quota.SPEND_CAP:
+        wait = str(quota.until_midnight(now))
+        raise HTTPException(503, PAUSED, {"Retry-After": wait})
     data = await _read(request)
     try:
         text = await run_in_threadpool(extract, data)
